@@ -56,6 +56,11 @@ def root():
         "health": "/health"
     }
 
+@app.get("/health")
+def simple_health():
+    """Simple health check endpoint for Railway"""
+    return {"status": "healthy", "service": "noki-ai-engine"}
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """Global exception handler"""
