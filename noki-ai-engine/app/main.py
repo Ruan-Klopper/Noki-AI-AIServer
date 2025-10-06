@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
@@ -23,6 +23,7 @@ except Exception as e:
     settings = MinimalSettings()
 
 from app.routes import chat, embed
+from app.auth import verify_bearer_token
 
 # Configure logging
 logging.basicConfig(
@@ -61,7 +62,7 @@ app.include_router(chat.router, prefix="/chat", tags=["Chat"])
 app.include_router(embed.router, prefix="/embed", tags=["Embeddings"])
 
 @app.get("/")
-def root():
+def root(token: str = Depends(verify_bearer_token)):
     """Root endpoint with API information"""
     return {
         "name": settings.app_name,

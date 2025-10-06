@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     backend_service_token: Optional[str] = None
+    bearer_token: Optional[str] = None
     
     # CORS Configuration
     allowed_origins: List[str] = ["http://localhost:3000", "http://localhost:8080"]

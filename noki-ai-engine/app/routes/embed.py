@@ -4,15 +4,13 @@ Embedding routes for resource and message embedding
 import logging
 from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.models.schemas import EmbedResourceInput, EmbedMessageInput
 from app.services.vector import VectorService
-from config import settings
+from app.auth import verify_bearer_token, verify_backend_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-security = HTTPBearer()
 
 
 def get_vector_service() -> VectorService:
@@ -20,22 +18,11 @@ def get_vector_service() -> VectorService:
     return VectorService()
 
 
-def verify_backend_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
-    """Verify backend service token"""
-    if not settings.backend_service_token:
-        return "no-auth"  # Development mode
-    
-    if credentials.credentials != settings.backend_service_token:
-        raise HTTPException(status_code=401, detail="Invalid service token")
-    
-    return credentials.credentials
-
-
 @router.post("/embed_resource")
 async def embed_resource(
     embed_input: EmbedResourceInput,
     vector_service: VectorService = Depends(get_vector_service),
-    token: str = Depends(verify_backend_token)
+    token: str = Depends(verify_bearer_token)
 ) -> Dict[str, Any]:
     """
     Embed a resource (PDF, website, YouTube video) into the vector database
@@ -80,7 +67,7 @@ async def embed_resource(
 async def embed_message(
     embed_input: EmbedMessageInput,
     vector_service: VectorService = Depends(get_vector_service),
-    token: str = Depends(verify_backend_token)
+    token: str = Depends(verify_bearer_token)
 ) -> Dict[str, Any]:
     """
     Embed a chat message into the vector database
@@ -124,7 +111,7 @@ async def embed_resource_async(
     embed_input: EmbedResourceInput,
     background_tasks: BackgroundTasks,
     vector_service: VectorService = Depends(get_vector_service),
-    token: str = Depends(verify_backend_token)
+    token: str = Depends(verify_bearer_token)
 ) -> Dict[str, Any]:
     """
     Embed a resource asynchronously in the background
@@ -166,7 +153,7 @@ async def delete_resource_embeddings(
     resource_id: str,
     user_id: str,
     vector_service: VectorService = Depends(get_vector_service),
-    token: str = Depends(verify_backend_token)
+    token: str = Depends(verify_bearer_token)
 ) -> Dict[str, Any]:
     """
     Delete embeddings for a specific resource
@@ -205,7 +192,7 @@ async def delete_resource_embeddings(
 async def delete_user_embeddings(
     user_id: str,
     vector_service: VectorService = Depends(get_vector_service),
-    token: str = Depends(verify_backend_token)
+    token: str = Depends(verify_bearer_token)
 ) -> Dict[str, Any]:
     """
     Delete all embeddings for a user (for data privacy)
@@ -243,7 +230,7 @@ async def delete_user_embeddings(
 async def get_embedding_stats(
     user_id: str,
     vector_service: VectorService = Depends(get_vector_service),
-    token: str = Depends(verify_backend_token)
+    token: str = Depends(verify_bearer_token)
 ) -> Dict[str, Any]:
     """
     Get embedding statistics for a user

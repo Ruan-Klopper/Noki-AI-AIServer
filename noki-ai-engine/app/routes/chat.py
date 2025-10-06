@@ -4,17 +4,15 @@ Chat routes for the main AI interaction endpoints
 import logging
 from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.models.schemas import ChatInput, AIResponse, ContextInput
 from app.services.llm import LLMService
 from app.services.vector import VectorService
 from app.services.planner import PlannerService
-from config import settings
+from app.auth import verify_bearer_token, verify_backend_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-security = HTTPBearer()
 
 
 def get_vector_service() -> VectorService:
@@ -32,22 +30,12 @@ def get_planner_service() -> PlannerService:
     return PlannerService()
 
 
-def verify_backend_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
-    """Verify backend service token"""
-    if not settings.backend_service_token:
-        return "no-auth"  # Development mode
-    
-    if credentials.credentials != settings.backend_service_token:
-        raise HTTPException(status_code=401, detail="Invalid service token")
-    
-    return credentials.credentials
-
-
 @router.post("/chat", response_model=AIResponse)
 async def chat(
     chat_input: ChatInput,
     llm_service: LLMService = Depends(get_llm_service),
-    planner_service: PlannerService = Depends(get_planner_service)
+    planner_service: PlannerService = Depends(get_planner_service),
+    token: str = Depends(verify_bearer_token)
 ) -> AIResponse:
     """
     Main chat endpoint - processes user messages and returns structured AI responses
@@ -147,7 +135,8 @@ async def chat_with_context(
 @router.post("/chat/stream")
 async def chat_stream(
     chat_input: ChatInput,
-    llm_service: LLMService = Depends(get_llm_service)
+    llm_service: LLMService = Depends(get_llm_service),
+    token: str = Depends(verify_bearer_token)
 ):
     """
     Streaming chat endpoint for real-time responses
@@ -209,7 +198,8 @@ async def chat_stream(
 async def get_chat_history(
     conversation_id: str,
     user_id: str,
-    vector_service: VectorService = Depends(get_vector_service)
+    vector_service: VectorService = Depends(get_vector_service),
+    token: str = Depends(verify_bearer_token)
 ) -> Dict[str, Any]:
     """
     Get chat history for a conversation
