@@ -64,13 +64,19 @@ Guidelines:
 - Format responses as structured blocks for the UI
 - Be concise but comprehensive
 - Focus on academic productivity and learning
+- ALWAYS reference conversation history when relevant
+- If user asks about assignments/tasks/schedule and you have context data, use it
+- If user asks for "all" or comprehensive data, acknowledge existing context but request fresh data
 
-Current context:
+Conversation Context:
 - User ID: {user_id}
 - Conversation ID: {conversation_id}
 - Available projects: {projects}
 - Available tasks: {tasks}
-- Relevant resources: {resources}"""
+- Relevant resources: {resources}
+- Recent conversation history: {conversation_history}
+
+IMPORTANT: When referencing conversation history, acknowledge what was discussed earlier and build upon it. If the user asks for comprehensive data (like "all my assignments"), acknowledge any existing context but explain that you're getting the most current information."""
 
         # Planner-specific prompt
         self.planner_prompt = """You are Noki AI in planning mode. Your job is to create structured study plans, schedules, and task lists.
@@ -134,6 +140,9 @@ Output format:
             intent = self._determine_intent(chat_input, semantic_context)
             
             if intent:
+                # Save the user message before returning intent
+                self._save_message(chat_input)
+                
                 # Return intent response
                 return AIResponse(
                     stage=Stage.INTENT,
@@ -168,10 +177,19 @@ Output format:
         Continue processing after backend provides context data
         """
         try:
-            # Generate response with the provided context
-            response = self._generate_response_with_context(
-                conversation_id, user_id, context_data
+            # Get recent chat history for context
+            recent_history = self.vector_service.get_recent_chat_history(
+                user_id=user_id,
+                conversation_id=conversation_id
             )
+            
+            # Generate response with the provided context and history
+            response = self._generate_response_with_context(
+                conversation_id, user_id, context_data, recent_history
+            )
+            
+            # Save the context response to maintain conversation history
+            self._save_context_response(conversation_id, user_id, context_data, response)
             
             return response
             
@@ -218,16 +236,68 @@ Output format:
     def _determine_intent(self, chat_input: ChatInput, context: List[Document]) -> Optional[AIIntent]:
         """Determine if backend data is needed"""
         try:
-            # Simple heuristic: if user asks about assignments, schedule, or specific data
             prompt_lower = chat_input.prompt.lower()
             
-            if any(keyword in prompt_lower for keyword in [
-                "assignments", "homework", "due dates", "schedule", "calendar",
-                "upcoming", "deadlines", "projects", "tasks"
-            ]):
+            # Check what context data we already have
+            has_assignments_context = any(
+                "assignments" in doc.metadata.get("context_data_keys", []) or
+                "assignment" in doc.page_content.lower()
+                for doc in context
+            )
+            
+            has_schedule_context = any(
+                "schedule" in doc.metadata.get("context_data_keys", []) or
+                "schedule" in doc.page_content.lower()
+                for doc in context
+            )
+            
+            # Keywords that suggest user wants comprehensive/updated data
+            comprehensive_keywords = [
+                "all my", "show me all", "list all", "give me all", "what are all",
+                "complete list", "full list", "everything", "entire", "comprehensive"
+            ]
+            
+            # Keywords that suggest user wants specific data types
+            assignment_keywords = [
+                "assignments", "homework", "due dates", "upcoming", "deadlines", 
+                "projects", "tasks", "papers", "essays", "exams"
+            ]
+            
+            schedule_keywords = [
+                "schedule", "calendar", "time", "when", "appointments", "meetings",
+                "classes", "events", "availability"
+            ]
+            
+            # Check if user is asking for comprehensive data
+            wants_comprehensive = any(keyword in prompt_lower for keyword in comprehensive_keywords)
+            
+            # Check if user is asking for specific data types
+            wants_assignments = any(keyword in prompt_lower for keyword in assignment_keywords)
+            wants_schedule = any(keyword in prompt_lower for keyword in schedule_keywords)
+            
+            # Determine if we need to request fresh data
+            needs_assignments = wants_assignments and (
+                not has_assignments_context or  # No existing context
+                wants_comprehensive or  # User wants comprehensive data
+                "updated" in prompt_lower or "latest" in prompt_lower or "current" in prompt_lower
+            )
+            
+            needs_schedule = wants_schedule and (
+                not has_schedule_context or  # No existing context
+                wants_comprehensive or  # User wants comprehensive data
+                "updated" in prompt_lower or "latest" in prompt_lower or "current" in prompt_lower
+            )
+            
+            if needs_assignments or needs_schedule:
+                targets = []
+                if needs_assignments:
+                    targets.append("assignments")
+                if needs_schedule:
+                    targets.append("schedule")
+                
                 return AIIntent(
                     type=IntentType.BACKEND_QUERY,
-                    targets=["assignments", "schedule"],
+                    targets=targets,
                     filters={
                         "project_ids": [p.project_id for p in (chat_input.projects or [])],
                         "task_ids": [t.task_id for t in (chat_input.tasks or [])]
@@ -247,6 +317,7 @@ Output format:
             context_text = self._format_context(context)
             projects_text = self._format_projects(chat_input.projects or [])
             tasks_text = self._format_tasks(chat_input.tasks or [])
+            conversation_history = self._format_conversation_history(context)
             
             # Create system message
             system_message = SystemMessage(content=self.system_prompt.format(
@@ -254,7 +325,8 @@ Output format:
                 conversation_id=chat_input.conversation_id,
                 projects=projects_text,
                 tasks=tasks_text,
-                resources=context_text
+                resources=context_text,
+                conversation_history=conversation_history
             ))
             
             # Create human message
@@ -304,12 +376,17 @@ Output format:
             )
     
     def _generate_response_with_context(self, conversation_id: str, user_id: str,
-                                      context_data: Dict[str, Any]) -> AIResponse:
+                                      context_data: Dict[str, Any], 
+                                      recent_history: List[Document] = None) -> AIResponse:
         """Generate response with backend-provided context"""
         try:
             # Process the context data to create a meaningful response
             assignments = context_data.get("assignments", [])
-            schedule = context_data.get("schedule", {})
+            schedule = context_data.get("schedule", [])
+            
+            # Handle schedule as either list or dict
+            schedule_items = schedule if isinstance(schedule, list) else schedule.get("items", [])
+            available_slots = schedule if isinstance(schedule, dict) else []
             
             # Create a comprehensive response based on the context
             response_text = "Perfect! I've analyzed your assignments and schedule. "
@@ -317,7 +394,9 @@ Output format:
             if assignments:
                 response_text += f"I found {len(assignments)} assignments that need attention. "
             
-            if schedule.get("available_slots"):
+            if schedule_items:
+                response_text += f"I can see {len(schedule_items)} schedule items and will optimize your todo list accordingly. "
+            elif available_slots:
                 response_text += "I can see your available time slots and will optimize your todo list accordingly. "
             
             response_text += "Let me create a comprehensive todo list that aligns with your academic goals and schedule."
@@ -352,7 +431,7 @@ Output format:
                         {
                             "title": "Schedule Analysis",
                             "description": "Analyzed your available time slots",
-                            "list": [f"Available slots: {len(schedule.get('available_slots', []))}"]
+                            "list": [f"Schedule items: {len(schedule_items)}"]
                         }
                     ]
                 }],
@@ -378,7 +457,11 @@ Output format:
         
         formatted = []
         for doc in context[:5]:  # Limit to top 5
-            formatted.append(f"- {doc.page_content[:200]}...")
+            # Include more context for context responses
+            if doc.metadata.get("stage") == "context_response":
+                formatted.append(f"[Context Data]: {doc.page_content}")
+            else:
+                formatted.append(f"- {doc.page_content[:200]}...")
         
         return "\n".join(formatted)
     
@@ -406,6 +489,25 @@ Output format:
         
         return "\n".join(formatted)
     
+    def _format_conversation_history(self, context: List[Document]) -> str:
+        """Format conversation history for prompt"""
+        if not context:
+            return "No previous conversation history."
+        
+        # Filter for chat messages (not resources)
+        chat_messages = []
+        for doc in context:
+            if doc.metadata.get("type") == "chat":
+                stage = doc.metadata.get("stage", "unknown")
+                content = doc.page_content[:150] + "..." if len(doc.page_content) > 150 else doc.page_content
+                chat_messages.append(f"[{stage}]: {content}")
+        
+        if not chat_messages:
+            return "No previous conversation history."
+        
+        # Return recent messages (limit to last 3)
+        return "\n".join(chat_messages[-3:])
+    
     def _parse_response_to_blocks(self, response_text: str) -> List[Dict[str, Any]]:
         """Parse LLM response into structured blocks"""
         # This is a simplified parser - in production, you'd want more sophisticated parsing
@@ -432,10 +534,53 @@ Output format:
                 metadata={
                     "stage": chat_input.stage,
                     "projects": [p.project_id for p in (chat_input.projects or [])],
-                    "tasks": [t.task_id for t in (chat_input.tasks or [])],
-                    "embedding_tokens": embedding_tokens
+                    "tasks": [t.task_id for t in (chat_input.tasks or [])]
                 }
             )
             logger.info(f"Saved message {message_id} with {embedding_tokens} embedding tokens")
         except Exception as e:
             logger.error(f"Failed to save message: {e}")
+    
+    def _save_context_response(self, conversation_id: str, user_id: str, 
+                              context_data: Dict[str, Any], response: AIResponse):
+        """Save context response to vector store for conversation history"""
+        try:
+            # Create a detailed summary of the context response for embedding
+            context_summary = f"Context processed: {response.text}"
+            if response.blocks:
+                context_summary += f" Generated {len(response.blocks)} response blocks."
+            
+            # Add specific assignment/schedule details to the summary
+            assignments = context_data.get("assignments", [])
+            schedule = context_data.get("schedule", [])
+            
+            if assignments:
+                context_summary += f" Assignments available: "
+                for assignment in assignments[:3]:  # Limit to first 3
+                    title = assignment.get("title", "Untitled")
+                    due_date = assignment.get("due_date", "No due date")
+                    status = assignment.get("status", "Unknown status")
+                    context_summary += f"{title} (due: {due_date}, status: {status}); "
+            
+            if schedule:
+                context_summary += f" Schedule items: "
+                for item in schedule[:3]:  # Limit to first 3
+                    title = item.get("title", "Untitled")
+                    start_time = item.get("start_time", "No time")
+                    context_summary += f"{title} at {start_time}; "
+            
+            message_id, embedding_tokens = self.vector_service.embed_message(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                message_id=f"ctx_{datetime.utcnow().timestamp()}",
+                message_content=context_summary,
+                metadata={
+                    "stage": "context_response",
+                    "type": "chat",  # Ensure it's marked as chat for history retrieval
+                    "context_data_keys": list(context_data.keys()),
+                    "response_blocks_count": len(response.blocks or [])
+                }
+            )
+            logger.info(f"Saved context response {message_id} with {embedding_tokens} embedding tokens")
+        except Exception as e:
+            logger.error(f"Failed to save context response: {e}")
