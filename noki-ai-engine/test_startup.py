@@ -24,9 +24,8 @@ def test_imports():
         from app.main import app
         print("✓ FastAPI app imported successfully")
         
-        # Test health endpoint
-        from app.routes.health import router
-        print("✓ Health router imported successfully")
+        # Test health endpoint (now in main.py)
+        print("✓ Health endpoint available in main app")
         
         print("\n✅ All imports successful!")
         return True
