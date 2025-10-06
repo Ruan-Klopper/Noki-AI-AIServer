@@ -6,14 +6,11 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y gcc && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install dependencies
-COPY noki-ai-engine/requirements.txt /app/requirements.txt
+COPY requirements.txt /app/requirements.txt
 RUN pip3 install --no-cache-dir -r /app/requirements.txt
 
 # Copy project files
 COPY . /app/
-
-# Set working directory to the application
-WORKDIR /app/noki-ai-engine
 
 # Expose port
 EXPOSE 8000
