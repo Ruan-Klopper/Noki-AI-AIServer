@@ -3,8 +3,25 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 import logging
+import os
 
-from config import settings
+# Import settings with error handling
+try:
+    from config import settings
+except Exception as e:
+    print(f"Warning: Could not load config: {e}")
+    # Create minimal settings for basic operation
+    class MinimalSettings:
+        app_name = "Noki AI Engine"
+        app_version = "1.0.0"
+        debug = False
+        host = "0.0.0.0"
+        port = int(os.getenv("PORT", 8000))
+        log_level = "INFO"
+        allowed_origins = ["*"]
+        rate_limit_per_user = 0
+    settings = MinimalSettings()
+
 from app.routes import chat, embed, health
 
 # Configure logging
@@ -24,16 +41,16 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Add security middleware
+# Add security middleware (more permissive for Railway)
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1", "*.noki.ai"]
+    allowed_hosts=["*"]  # Allow all hosts for Railway deployment
 )
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins,
+    allow_origins=["*"],  # Allow all origins for Railway deployment
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],

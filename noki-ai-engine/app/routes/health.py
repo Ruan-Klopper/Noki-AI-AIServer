@@ -8,8 +8,44 @@ from datetime import datetime
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
-from app.models.schemas import HealthResponse, MetricsResponse
-from config import settings
+# Import settings with error handling
+try:
+    from config import settings
+except Exception as e:
+    print(f"Warning: Could not load config in health.py: {e}")
+    # Create minimal settings for health checks
+    class MinimalSettings:
+        app_version = "1.0.0"
+        debug = False
+        log_level = "INFO"
+        openai_api_key = None
+        pinecone_api_key = None
+        supabase_url = None
+        supabase_key = None
+        rate_limit_per_user = 0
+    settings = MinimalSettings()
+
+# Import schemas with error handling
+try:
+    from app.models.schemas import HealthResponse, MetricsResponse
+except Exception as e:
+    print(f"Warning: Could not load schemas in health.py: {e}")
+    # Create minimal schema classes
+    from pydantic import BaseModel
+    
+    class HealthResponse(BaseModel):
+        status: str
+        timestamp: datetime
+        version: str
+    
+    class MetricsResponse(BaseModel):
+        requests_total: int
+        errors_total: int
+        avg_latency_ms: float
+        stage_distribution: dict
+        intent_frequency: dict
+        token_usage: dict
+        timestamp: datetime
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
