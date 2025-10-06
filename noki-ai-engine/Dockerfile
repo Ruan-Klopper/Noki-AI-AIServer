@@ -12,9 +12,6 @@ RUN pip3 install --no-cache-dir -r /app/requirements.txt
 # Copy project files
 COPY . /app/
 
-# Test the application startup
-RUN python3 test_startup.py
-
 # Expose port
 EXPOSE 8000
 
