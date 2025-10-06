@@ -16,4 +16,4 @@ COPY . /app/
 EXPOSE 8000
 
 # Run the application with shell expansion for PORT variable
-CMD ["sh", "-c", "python3 -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "python3 -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"]
