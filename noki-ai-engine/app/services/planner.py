@@ -247,20 +247,32 @@ class PlannerService:
         
         return subtasks
     
-    def _create_schedule_block(self, schedule: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _create_schedule_block(self, schedule: Dict[str, Any]) -> Dict[str, Any]:
         """Create a schedule display block"""
-        items = []
-        for item in schedule:
-            items.append({
-                "title": item.get("title", "Event"),
-                "description": f"{item.get('start', '')} - {item.get('end', '')}",
-                "due_datetime": item.get("start")
-            })
-        
-        return self.block_factory.create_todo_list(
-            list_title="Your Schedule",
-            items=items
-        )
+        try:
+            items = []
+            available_slots = schedule.get("available_slots", [])
+            
+            for slot in available_slots:
+                date = slot.get("date", "Unknown Date")
+                time_slots = slot.get("time_slots", [])
+                
+                for time_slot in time_slots:
+                    items.append({
+                        "title": f"Available - {time_slot.get('type', 'General')}",
+                        "description": f"{date} from {time_slot.get('start', '')} to {time_slot.get('end', '')}",
+                        "due_datetime": f"{date}T{time_slot.get('start', '09:00')}:00Z"
+                    })
+            
+            return self.block_factory.create_todo_list(
+                list_title="Available Time Slots",
+                items=items,
+                footer="These are your available time slots for scheduling tasks."
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to create schedule block: {e}")
+            return self.block_factory.create_confirmation("Failed to process schedule data.")
     
     def _create_schedule_proposal_block(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Create a schedule proposal block"""

@@ -3,7 +3,7 @@ Configuration module for Noki AI Engine
 """
 import os
 from typing import List, Optional
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     # Pinecone Vector Database Configuration
     pinecone_api_key: Optional[str] = None
     pinecone_environment: Optional[str] = None
-    pinecone_index_name: str = "noki-ai-embeddings"
+    pinecone_index_name: str = "noki-ai-rd41mlf"
     pinecone_dimension: int = 1536  # OpenAI embedding dimension
     
     # Supabase Configuration (for vector storage)
@@ -42,7 +42,12 @@ class Settings(BaseSettings):
     retrieval_top_k: int = 6
     max_chat_history: int = 5
     chunk_size: int = 1000
-    chunk_overlap: int = 200
+    chunk_overlap: int = 100  # Reduced from 200 for better performance
+    
+    # Embedding Optimization
+    embedding_batch_size: int = 10  # Process embeddings in batches
+    embedding_cache_ttl: int = 3600  # Cache embeddings for 1 hour
+    max_concurrent_embeddings: int = 5  # Limit concurrent embedding operations
     
     # Security
     secret_key: str = "your-secret-key-change-this-in-production"

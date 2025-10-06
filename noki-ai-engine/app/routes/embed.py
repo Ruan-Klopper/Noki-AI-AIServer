@@ -3,7 +3,7 @@ Embedding routes for resource and message embedding
 """
 import logging
 from typing import Dict, Any
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.models.schemas import EmbedResourceInput, EmbedMessageInput
@@ -47,8 +47,8 @@ async def embed_resource(
     try:
         logger.info(f"Embedding resource {embed_input.resource_id} for user {embed_input.user_id}")
         
-        # Embed the resource
-        embedding_id, embedding_tokens = vector_service.embed_resource(
+        # Use async embedding method for better performance
+        embedding_id, embedding_tokens = await vector_service.embed_resource_async(
             user_id=embed_input.user_id,
             conversation_id=embed_input.conversation_id,
             resource_id=embed_input.resource_id,
@@ -92,8 +92,8 @@ async def embed_message(
     try:
         logger.info(f"Embedding message {embed_input.message_id} for user {embed_input.user_id}")
         
-        # Embed the message
-        embedding_id, embedding_tokens = vector_service.embed_message(
+        # Use async embedding method for better performance
+        embedding_id, embedding_tokens = await vector_service.embed_message_async(
             user_id=embed_input.user_id,
             conversation_id=embed_input.conversation_id,
             message_id=embed_input.message_id,
@@ -116,6 +116,48 @@ async def embed_message(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to embed message: {str(e)}"
+        )
+
+
+@router.post("/embed_resource_async")
+async def embed_resource_async(
+    embed_input: EmbedResourceInput,
+    background_tasks: BackgroundTasks,
+    vector_service: VectorService = Depends(get_vector_service),
+    token: str = Depends(verify_backend_token)
+) -> Dict[str, Any]:
+    """
+    Embed a resource asynchronously in the background
+    
+    This endpoint starts the embedding process in the background and returns immediately.
+    Useful for large resources that would otherwise timeout.
+    """
+    try:
+        logger.info(f"Starting async embedding for resource {embed_input.resource_id}")
+        
+        # Add the embedding task to background tasks
+        background_tasks.add_task(
+            vector_service.embed_resource_async,
+            user_id=embed_input.user_id,
+            conversation_id=embed_input.conversation_id,
+            resource_id=embed_input.resource_id,
+            resource_type=embed_input.resource_type,
+            title=embed_input.title,
+            content=embed_input.content,
+            metadata=embed_input.metadata
+        )
+        
+        return {
+            "status": "accepted",
+            "resource_id": embed_input.resource_id,
+            "message": "Resource embedding started in background"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error starting async embedding for resource {embed_input.resource_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to start resource embedding: {str(e)}"
         )
 
 

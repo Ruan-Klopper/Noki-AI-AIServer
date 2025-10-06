@@ -1,0 +1,198 @@
+{
+  "sample_request": {
+    "description": "Sample API call to set up a todo list for photography tasks using Noki AI Engine",
+    "endpoint": "POST /chat/chat",
+    "request_body": {
+      "user_id": "photographer_001",
+      "conversation_id": "conv_photography_planning_2025",
+      "prompt": "I need help setting up a comprehensive todo list for my photography project. I'm working on a portfolio project that includes portrait photography, landscape shots, and event photography. I need to organize my tasks, plan my shoots, and manage my post-processing workflow. Can you help me create a structured todo list with deadlines and priorities?",
+      "projects": [
+        {
+          "project_id": "proj_portfolio_2025",
+          "title": "Photography Portfolio 2025",
+          "description": "Comprehensive portfolio showcasing portrait, landscape, and event photography skills",
+          "instructor": "Self-directed"
+        }
+      ],
+      "tasks": [
+        {
+          "task_id": "task_portrait_shoot_1",
+          "title": "Portrait Photography Session - Studio Setup",
+          "description": "Conduct portrait photography session with professional lighting setup",
+          "due_datetime": "2025-01-15T14:00:00.000Z",
+          "status": "not_started",
+          "project_id": "proj_portfolio_2025"
+        },
+        {
+          "task_id": "task_landscape_scouting",
+          "title": "Landscape Location Scouting",
+          "description": "Research and visit potential landscape photography locations",
+          "due_datetime": "2025-01-20T09:00:00.000Z",
+          "status": "not_started",
+          "project_id": "proj_portfolio_2025"
+        },
+        {
+          "task_id": "task_equipment_check",
+          "title": "Equipment Maintenance and Check",
+          "description": "Clean lenses, check camera settings, and ensure all equipment is ready",
+          "due_datetime": "2025-01-10T10:00:00.000Z",
+          "status": "not_started",
+          "project_id": "proj_portfolio_2025"
+        }
+      ],
+      "stage": "thinking",
+      "metadata": {
+        "project_type": "photography",
+        "skill_level": "intermediate",
+        "timeline": "3_months",
+        "equipment_available": [
+          "DSLR",
+          "Portrait Lens",
+          "Landscape Lens",
+          "Tripod",
+          "Studio Lights"
+        ]
+      }
+    }
+  },
+  "expected_response": {
+    "description": "Expected response structure from the AI",
+    "response_body": {
+      "stage": "response",
+      "conversation_id": "conv_photography_planning_2025",
+      "text": "I'll help you create a comprehensive todo list for your photography portfolio project. Based on your requirements, I've organized your tasks into logical phases with priorities and deadlines.",
+      "blocks": [
+        {
+          "type": "todo_list",
+          "list_title": "Photography Portfolio Project - Complete Task List",
+          "items": [
+            {
+              "title": "Equipment Preparation & Setup",
+              "description": "Clean and prepare all photography equipment",
+              "project_id": "proj_portfolio_2025",
+              "task_id": "task_equipment_prep",
+              "due_datetime": "2025-01-10T10:00:00.000Z"
+            },
+            {
+              "title": "Portrait Photography Session",
+              "description": "Conduct professional portrait session with studio lighting",
+              "project_id": "proj_portfolio_2025",
+              "task_id": "task_portrait_shoot_1",
+              "due_datetime": "2025-01-15T14:00:00.000Z"
+            },
+            {
+              "title": "Landscape Location Scouting",
+              "description": "Research and visit potential landscape photography locations",
+              "project_id": "proj_portfolio_2025",
+              "task_id": "task_landscape_scouting",
+              "due_datetime": "2025-01-20T09:00:00.000Z"
+            },
+            {
+              "title": "Landscape Photography Shoot",
+              "description": "Execute landscape photography session at scouted locations",
+              "project_id": "proj_portfolio_2025",
+              "task_id": "task_landscape_shoot",
+              "due_datetime": "2025-01-25T06:00:00.000Z"
+            },
+            {
+              "title": "Event Photography Practice",
+              "description": "Practice event photography techniques and timing",
+              "project_id": "proj_portfolio_2025",
+              "task_id": "task_event_practice",
+              "due_datetime": "2025-01-30T18:00:00.000Z"
+            },
+            {
+              "title": "Post-Processing Workflow Setup",
+              "description": "Organize and optimize post-processing workflow",
+              "project_id": "proj_portfolio_2025",
+              "task_id": "task_postprocessing_setup",
+              "due_datetime": "2025-02-05T12:00:00.000Z"
+            },
+            {
+              "title": "Portfolio Selection & Curation",
+              "description": "Select best images and curate portfolio presentation",
+              "project_id": "proj_portfolio_2025",
+              "task_id": "task_portfolio_curation",
+              "due_datetime": "2025-02-15T16:00:00.000Z"
+            },
+            {
+              "title": "Final Portfolio Review",
+              "description": "Final review and adjustments to portfolio",
+              "project_id": "proj_portfolio_2025",
+              "task_id": "task_final_review",
+              "due_datetime": "2025-02-28T14:00:00.000Z"
+            }
+          ],
+          "footer": "This todo list is organized by priority and timeline. Each task builds upon the previous ones to create a comprehensive photography portfolio.",
+          "accept_decline": true
+        },
+        {
+          "type": "explanation_block",
+          "title": "Photography Project Planning Guide",
+          "description": "Here's a breakdown of your photography project phases and recommendations:",
+          "blocks": [
+            {
+              "title": "Phase 1: Preparation (Week 1)",
+              "description": "Equipment setup and initial planning",
+              "list": [
+                "Clean and test all camera equipment",
+                "Set up studio lighting configuration",
+                "Create shot list and mood boards",
+                "Schedule model/client sessions"
+              ]
+            },
+            {
+              "title": "Phase 2: Photography Sessions (Weeks 2-4)",
+              "description": "Execute planned photography sessions",
+              "list": [
+                "Portrait sessions with different lighting setups",
+                "Landscape photography at golden hour",
+                "Event photography practice sessions",
+                "Document all settings and techniques used"
+              ]
+            },
+            {
+              "title": "Phase 3: Post-Processing (Weeks 5-6)",
+              "description": "Image editing and portfolio development",
+              "list": [
+                "Organize and catalog all images",
+                "Apply consistent editing style",
+                "Create different portfolio versions",
+                "Prepare images for different formats"
+              ]
+            }
+          ],
+          "footer": "Each phase builds upon the previous one, ensuring a systematic approach to your photography portfolio."
+        }
+      ],
+      "intent": null,
+      "timestamp": "2025-01-06T18:17:16.510Z",
+      "token_usage": {
+        "prompt_tokens": 450,
+        "completion_tokens": 320,
+        "total_tokens": 770,
+        "embedding_tokens": 0,
+        "cost_estimate_usd": 0.0023
+      }
+    }
+  },
+  "curl_example": {
+    "description": "Curl command to make the API call",
+    "command": "curl -X POST 'http://localhost:8000/chat/chat' \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: Bearer YOUR_API_TOKEN' \\\n  -d '{\n    \"user_id\": \"photographer_001\",\n    \"conversation_id\": \"conv_photography_planning_2025\",\n    \"prompt\": \"I need help setting up a comprehensive todo list for my photography project. I'''m working on a portfolio project that includes portrait photography, landscape shots, and event photography. I need to organize my tasks, plan my shoots, and manage my post-processing workflow. Can you help me create a structured todo list with deadlines and priorities?\",\n    \"projects\": [\n      {\n        \"project_id\": \"proj_portfolio_2025\",\n        \"title\": \"Photography Portfolio 2025\",\n        \"description\": \"Comprehensive portfolio showcasing portrait, landscape, and event photography skills\",\n        \"instructor\": \"Self-directed\"\n      }\n    ],\n    \"tasks\": [\n      {\n        \"task_id\": \"task_portrait_shoot_1\",\n        \"title\": \"Portrait Photography Session - Studio Setup\",\n        \"description\": \"Conduct portrait photography session with professional lighting setup\",\n        \"due_datetime\": \"2025-01-15T14:00:00.000Z\",\n        \"status\": \"not_started\",\n        \"project_id\": \"proj_portfolio_2025\"\n      },\n      {\n        \"task_id\": \"task_landscape_scouting\",\n        \"title\": \"Landscape Location Scouting\",\n        \"description\": \"Research and visit potential landscape photography locations\",\n        \"due_datetime\": \"2025-01-20T09:00:00.000Z\",\n        \"status\": \"not_started\",\n        \"project_id\": \"proj_portfolio_2025\"\n      },\n      {\n        \"task_id\": \"task_equipment_check\",\n        \"title\": \"Equipment Maintenance and Check\",\n        \"description\": \"Clean lenses, check camera settings, and ensure all equipment is ready\",\n        \"due_datetime\": \"2025-01-10T10:00:00.000Z\",\n        \"status\": \"not_started\",\n        \"project_id\": \"proj_portfolio_2025\"\n      }\n    ],\n    \"stage\": \"thinking\",\n    \"metadata\": {\n      \"project_type\": \"photography\",\n      \"skill_level\": \"intermediate\",\n      \"timeline\": \"3_months\",\n      \"equipment_available\": [\"DSLR\", \"Portrait Lens\", \"Landscape Lens\", \"Tripod\", \"Studio Lights\"]\n    }\n  }'"
+  },
+  "javascript_example": {
+    "description": "JavaScript/Node.js example using fetch",
+    "code": "const photographyTodoRequest = async () => {\n  const requestBody = {\n    user_id: \"photographer_001\",\n    conversation_id: \"conv_photography_planning_2025\",\n    prompt: \"I need help setting up a comprehensive todo list for my photography project. I'm working on a portfolio project that includes portrait photography, landscape shots, and event photography. I need to organize my tasks, plan my shoots, and manage my post-processing workflow. Can you help me create a structured todo list with deadlines and priorities?\",\n    projects: [\n      {\n        project_id: \"proj_portfolio_2025\",\n        title: \"Photography Portfolio 2025\",\n        description: \"Comprehensive portfolio showcasing portrait, landscape, and event photography skills\",\n        instructor: \"Self-directed\"\n      }\n    ],\n    tasks: [\n      {\n        task_id: \"task_portrait_shoot_1\",\n        title: \"Portrait Photography Session - Studio Setup\",\n        description: \"Conduct portrait photography session with professional lighting setup\",\n        due_datetime: \"2025-01-15T14:00:00.000Z\",\n        status: \"not_started\",\n        project_id: \"proj_portfolio_2025\"\n      },\n      {\n        task_id: \"task_landscape_scouting\",\n        title: \"Landscape Location Scouting\",\n        description: \"Research and visit potential landscape photography locations\",\n        due_datetime: \"2025-01-20T09:00:00.000Z\",\n        status: \"not_started\",\n        project_id: \"proj_portfolio_2025\"\n      },\n      {\n        task_id: \"task_equipment_check\",\n        title: \"Equipment Maintenance and Check\",\n        description: \"Clean lenses, check camera settings, and ensure all equipment is ready\",\n        due_datetime: \"2025-01-10T10:00:00.000Z\",\n        status: \"not_started\",\n        project_id: \"proj_portfolio_2025\"\n      }\n    ],\n    stage: \"thinking\",\n    metadata: {\n      project_type: \"photography\",\n      skill_level: \"intermediate\",\n      timeline: \"3_months\",\n      equipment_available: [\"DSLR\", \"Portrait Lens\", \"Landscape Lens\", \"Tripod\", \"Studio Lights\"]\n    }\n  };\n\n  try {\n    const response = await fetch('http://localhost:8000/chat/chat', {\n      method: 'POST',\n      headers: {\n        'Content-Type': 'application/json',\n        'Authorization': 'Bearer YOUR_API_TOKEN'\n      },\n      body: JSON.stringify(requestBody)\n    });\n\n    const result = await response.json();\n    \n    if (response.ok) {\n      console.log('Todo list created successfully:', result);\n      \n      // Process the response blocks\n      if (result.blocks) {\n        result.blocks.forEach(block => {\n          if (block.type === 'todo_list') {\n            console.log(`Todo List: ${block.list_title}`);\n            block.items.forEach(item => {\n              console.log(`- ${item.title}: ${item.description}`);\n            });\n          }\n        });\n      }\n    } else {\n      console.error('Error creating todo list:', result);\n    }\n  } catch (error) {\n    console.error('Network error:', error);\n  }\n};\n\n// Call the function\nphotographyTodoRequest();"
+  },
+  "python_example": {
+    "description": "Python example using requests library",
+    "code": "import requests\nimport json\nfrom datetime import datetime\n\ndef create_photography_todo_list():\n    \"\"\"Create a comprehensive todo list for photography project\"\"\"\n    \n    url = \"http://localhost:8000/chat/chat\"\n    \n    request_data = {\n        \"user_id\": \"photographer_001\",\n        \"conversation_id\": \"conv_photography_planning_2025\",\n        \"prompt\": \"I need help setting up a comprehensive todo list for my photography project. I'm working on a portfolio project that includes portrait photography, landscape shots, and event photography. I need to organize my tasks, plan my shoots, and manage my post-processing workflow. Can you help me create a structured todo list with deadlines and priorities?\",\n        \"projects\": [\n            {\n                \"project_id\": \"proj_portfolio_2025\",\n                \"title\": \"Photography Portfolio 2025\",\n                \"description\": \"Comprehensive portfolio showcasing portrait, landscape, and event photography skills\",\n                \"instructor\": \"Self-directed\"\n            }\n        ],\n        \"tasks\": [\n            {\n                \"task_id\": \"task_portrait_shoot_1\",\n                \"title\": \"Portrait Photography Session - Studio Setup\",\n                \"description\": \"Conduct portrait photography session with professional lighting setup\",\n                \"due_datetime\": \"2025-01-15T14:00:00.000Z\",\n                \"status\": \"not_started\",\n                \"project_id\": \"proj_portfolio_2025\"\n            },\n            {\n                \"task_id\": \"task_landscape_scouting\",\n                \"title\": \"Landscape Location Scouting\",\n                \"description\": \"Research and visit potential landscape photography locations\",\n                \"due_datetime\": \"2025-01-20T09:00:00.000Z\",\n                \"status\": \"not_started\",\n                \"project_id\": \"proj_portfolio_2025\"\n            },\n            {\n                \"task_id\": \"task_equipment_check\",\n                \"title\": \"Equipment Maintenance and Check\",\n                \"description\": \"Clean lenses, check camera settings, and ensure all equipment is ready\",\n                \"due_datetime\": \"2025-01-10T10:00:00.000Z\",\n                \"status\": \"not_started\",\n                \"project_id\": \"proj_portfolio_2025\"\n            }\n        ],\n        \"stage\": \"thinking\",\n        \"metadata\": {\n            \"project_type\": \"photography\",\n            \"skill_level\": \"intermediate\",\n            \"timeline\": \"3_months\",\n            \"equipment_available\": [\"DSLR\", \"Portrait Lens\", \"Landscape Lens\", \"Tripod\", \"Studio Lights\"]\n        }\n    }\n    \n    headers = {\n        \"Content-Type\": \"application/json\",\n        \"Authorization\": \"Bearer YOUR_API_TOKEN\"\n    }\n    \n    try:\n        response = requests.post(url, json=request_data, headers=headers)\n        response.raise_for_status()\n        \n        result = response.json()\n        \n        print(f\"Todo list created successfully!\")\n        print(f\"Stage: {result['stage']}\")\n        print(f\"Conversation ID: {result['conversation_id']}\")\n        \n        # Process and display the todo list\n        if result.get('blocks'):\n            for block in result['blocks']:\n                if block.get('type') == 'todo_list':\n                    print(f\"\\n📋 {block['list_title']}\")\n                    for i, item in enumerate(block['items'], 1):\n                        print(f\"{i}. {item['title']}\")\n                        if item.get('description'):\n                            print(f\"   Description: {item['description']}\")\n                        if item.get('due_datetime'):\n                            print(f\"   Due: {item['due_datetime']}\")\n                    \n                    if block.get('footer'):\n                        print(f\"\\n💡 {block['footer']}\")\n        \n        # Display token usage\n        if result.get('token_usage'):\n            usage = result['token_usage']\n            print(f\"\\n📊 Token Usage:\")\n            print(f\"   Prompt tokens: {usage['prompt_tokens']}\")\n            print(f\"   Completion tokens: {usage['completion_tokens']}\")\n            print(f\"   Total tokens: {usage['total_tokens']}\")\n            print(f\"   Estimated cost: ${usage['cost_estimate_usd']:.4f}\")\n        \n        return result\n        \n    except requests.exceptions.RequestException as e:\n        print(f\"Error making request: {e}\")\n        return None\n    except json.JSONDecodeError as e:\n        print(f\"Error parsing response: {e}\")\n        return None\n\nif __name__ == \"__main__\":\n    create_photography_todo_list()"
+  },
+  "notes": {
+    "authentication": "Replace 'YOUR_API_TOKEN' with your actual API token. Check your environment configuration for the backend_service_token.",
+    "base_url": "Replace 'http://localhost:8000' with your actual server URL if different.",
+    "customization": "You can modify the prompt, projects, tasks, and metadata to match your specific photography needs.",
+    "response_handling": "The AI will return structured blocks including todo lists and explanation blocks that you can render in your UI.",
+    "follow_up": "After receiving the initial response, you can make follow-up calls to refine the todo list or add more specific tasks."
+  }
+}

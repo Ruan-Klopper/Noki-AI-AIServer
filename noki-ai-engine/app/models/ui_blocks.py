@@ -1,7 +1,7 @@
 """
 UI Block models for structured responses
 """
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
 from pydantic import BaseModel, Field
 

@@ -116,8 +116,17 @@ async def chat_with_context(
         
         # Enhance response with planner service based on context data
         if context_input.context_data:
+            # Create a mock intent for the planner service
+            from app.models.schemas import AIIntent, IntentType
+            mock_intent = AIIntent(
+                type=IntentType.BACKEND_QUERY,
+                targets=["assignments", "schedule"],
+                filters={},
+                payload={}
+            )
+            
             enhanced_blocks = planner_service.create_intent_response(
-                intent=None,  # We'll determine this from context
+                intent=mock_intent,
                 context_data=context_input.context_data
             )
             
