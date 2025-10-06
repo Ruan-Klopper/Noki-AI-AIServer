@@ -18,30 +18,51 @@ class Settings(BaseSettings):
     
     # OpenAI Configuration
     openai_api_key: Optional[str] = None
-    openai_model: str = "gpt-3.5-turbo"
+    openai_model: str = "gpt-4o"
+    openai_temperature: float = 0.7
+    openai_max_tokens: int = 2000
     
-    # Database Configuration
-    database_url: str = "sqlite:///./noki_ai.db"
+    # Pinecone Vector Database Configuration
+    pinecone_api_key: Optional[str] = None
+    pinecone_environment: Optional[str] = None
+    pinecone_index_name: str = "noki-ai-embeddings"
+    pinecone_dimension: int = 1536  # OpenAI embedding dimension
     
-    # Supabase Configuration
+    # Supabase Configuration (for vector storage)
     supabase_url: Optional[str] = None
     supabase_key: Optional[str] = None
+    supabase_vector_table: str = "ai_embeddings"
     
     # LangChain Configuration
     langchain_api_key: Optional[str] = None
     langchain_tracing_v2: bool = True
     langchain_project: str = "noki-ai-engine"
     
+    # RAG Configuration
+    retrieval_top_k: int = 6
+    max_chat_history: int = 5
+    chunk_size: int = 1000
+    chunk_overlap: int = 200
+    
     # Security
     secret_key: str = "your-secret-key-change-this-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
+    backend_service_token: Optional[str] = None
     
     # CORS Configuration
     allowed_origins: List[str] = ["http://localhost:3000", "http://localhost:8080"]
     
+    # Rate Limiting
+    rate_limit_per_user: int = 100  # requests per hour
+    rate_limit_per_conversation: int = 50  # requests per hour
+    
     # Logging
     log_level: str = "INFO"
+    
+    # Metrics
+    enable_metrics: bool = True
+    metrics_port: int = 9090
     
     class Config:
         env_file = ".env"

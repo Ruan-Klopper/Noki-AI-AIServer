@@ -1,0 +1,50 @@
+# Core FastAPI dependencies
+fastapi==0.117.1
+uvicorn[standard]==0.37.0
+pydantic==2.11.9
+pydantic-settings==2.11.0
+
+# LangChain and AI dependencies
+langchain==0.3.27
+langchain-openai==0.2.8
+langchain-community==0.3.15
+openai==1.109.1
+
+# Vector database dependencies
+pinecone-client==3.0.3
+langchain-pinecone==0.1.0
+
+# Supabase dependencies (for vector storage alternative)
+supabase==2.20.0
+
+# HTTP client dependencies
+httpx==0.28.1
+requests==2.32.5
+
+# Security dependencies
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.12
+
+# Database dependencies (if needed)
+sqlalchemy==2.0.43
+alembic==1.14.0
+
+# Text processing dependencies
+tiktoken==0.8.0
+python-dotenv==1.1.1
+
+# Monitoring and logging dependencies
+prometheus-client==0.21.1
+structlog==24.4.0
+
+# Development dependencies
+pytest==8.3.4
+pytest-asyncio==0.24.0
+black==24.10.0
+isort==5.13.2
+flake8==7.1.1
+
+# Additional utilities
+python-dateutil==2.9.0
+typing-extensions==4.15.0
