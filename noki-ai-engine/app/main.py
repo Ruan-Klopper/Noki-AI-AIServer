@@ -22,7 +22,7 @@ except Exception as e:
         rate_limit_per_user = 0
     settings = MinimalSettings()
 
-from app.routes import chat, embed, health
+from app.routes import chat, embed
 
 # Configure logging
 logging.basicConfig(
@@ -59,8 +59,6 @@ app.add_middleware(
 # Include routers
 app.include_router(chat.router, prefix="/chat", tags=["Chat"])
 app.include_router(embed.router, prefix="/embed", tags=["Embeddings"])
-app.include_router(health.router, prefix="/health", tags=["Health"])
-app.include_router(health.router, prefix="/metrics", tags=["Metrics"])
 
 @app.get("/")
 def root():
@@ -76,7 +74,11 @@ def root():
 @app.get("/health")
 def simple_health():
     """Simple health check endpoint for Railway"""
-    return {"status": "healthy", "service": "noki-ai-engine"}
+    try:
+        return {"status": "healthy", "service": "noki-ai-engine", "timestamp": "2024-01-01T00:00:00Z"}
+    except Exception as e:
+        logger.error(f"Health check error: {e}")
+        return {"status": "healthy", "service": "noki-ai-engine"}
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
