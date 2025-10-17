@@ -2,16 +2,19 @@
 LLM service with LangChain integration for prompt pipeline and RAG
 """
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 
 from langchain_community.chat_models import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from langchain.schema import Document, HumanMessage, SystemMessage
 from langchain.memory import ConversationBufferWindowMemory
+from langchain.chains import ConversationalRetrievalChain
 
 from config import settings
 from app.services.token_usage import TokenUsageService
 from app.models.schemas import ChatInput, AIResponse, Stage, TokenUsage
+from app.models.ui_blocks import BlockFactory
 from app.services.vector import VectorService
 
 logger = logging.getLogger(__name__)
@@ -163,9 +166,10 @@ Output format:
     def _retrieve_context(self, chat_input: ChatInput) -> List[Document]:
         """Retrieve semantic context from vector database"""
         try:
-            # Get project and task IDs for filtering
+            # Get project, task, and todo IDs for filtering
             project_ids = [p.project_id for p in (chat_input.projects or [])]
             task_ids = [t.task_id for t in (chat_input.tasks or [])]
+            todo_ids = [t.todo_id for t in (chat_input.todos or [])]
             
             # Search for relevant context
             context = self.vector_service.search_semantic_context(
@@ -173,7 +177,8 @@ Output format:
                 conversation_id=chat_input.conversation_id,
                 query=chat_input.prompt,
                 project_ids=project_ids,
-                task_ids=task_ids
+                task_ids=task_ids,
+                todo_ids=todo_ids
             )
             
             # Add recent chat history
@@ -222,12 +227,10 @@ Output format:
             blocks = self._parse_response_to_blocks(response_text)
             
             # Calculate token usage
-            token_usage_data = self.token_service.create_token_usage(
+            token_usage = self.token_service.calculate_usage(
                 prompt_tokens=len(prompt.split()),
-                completion_tokens=len(response_text.split()),
-                model=settings.openai_model
+                completion_tokens=len(response_text.split())
             )
-            token_usage = TokenUsage(**token_usage_data)
             
             return AIResponse(
                 stage=Stage.RESPONSE,
@@ -327,11 +330,9 @@ Output format:
     def _save_message(self, chat_input: ChatInput):
         """Save user message to vector store"""
         try:
-            message_id = f"msg_{datetime.utcnow().timestamp()}"
-            self.vector_service.embed_message(
+            self.vector_service.save_chat_message(
                 user_id=chat_input.user_id,
                 conversation_id=chat_input.conversation_id,
-                message_id=message_id,
                 message_content=chat_input.prompt,
                 metadata={
                     "type": "chat_message",

@@ -1,0 +1,715 @@
+NOKI AI ENGINE - API DOCUMENTATION
+=====================================
+
+OVERVIEW
+--------
+The Noki AI Engine is an intelligent academic assistant API built with FastAPI that provides AI-powered chat functionality, resource embedding, and semantic search capabilities for educational applications.
+
+BASE URL: http://localhost:8000 (development) or your deployed URL
+API VERSION: 1.0.0
+DOCUMENTATION: /docs (Swagger UI) or /redoc (ReDoc)
+
+AUTHENTICATION
+--------------
+The API supports Bearer token authentication for secure access.
+
+Headers Required:
+- Authorization: Bearer <your-token>
+
+Note: Some endpoints require backend service tokens for internal communication.
+
+API ENDPOINTS
+=============
+
+1. ROOT ENDPOINT
+----------------
+GET /
+Description: Root endpoint with API information
+Authentication: Required (Bearer token)
+
+Response:
+{
+  "name": "Noki AI Engine",
+  "version": "1.0.0",
+  "status": "running",
+  "docs": "/docs",
+  "health": "/health"
+}
+
+2. CHAT ENDPOINTS
+-----------------
+
+2.1 Main Chat Endpoint
+POST /chat/chat
+Description: Main chat endpoint for AI interactions
+Authentication: Not required (internal endpoint)
+
+Request Body (ChatInput):
+{
+  "user_id": "string",           // Required: User identifier
+  "conversation_id": "string",   // Required: Conversation identifier
+  "prompt": "string",            // Required: User's message/prompt
+  "projects": [                  // Optional: Array of project objects
+    {
+      "project_id": "string",
+      "title": "string",
+      "description": "string",   // Optional
+      "instructor": "string"     // Optional
+    }
+  ],
+  "tasks": [                     // Optional: Array of task objects
+    {
+      "task_id": "string",
+      "title": "string",
+      "description": "string",   // Optional
+      "due_datetime": "datetime", // Optional (ISO 8601 format)
+      "status": "string",        // Optional: "not_started", "in_progress", "done", "blocked"
+      "project_id": "string"     // Optional
+    }
+  ],
+  "stage": "thinking",          // Optional: "thinking", "intent", "response", "complete"
+  "metadata": {}                 // Optional: Additional metadata
+}
+
+Response (AIResponse):
+{
+  "stage": "string",             // "thinking", "intent", "response", "complete"
+  "conversation_id": "string",
+  "text": "string",              // Optional: AI response text
+  "blocks": [                    // Optional: Array of UI blocks
+    {
+      "type": "string",          // "resource_item", "todo_list", "explanation_block", "confirmation"
+      // Additional fields depend on block type
+    }
+  ],
+  "intent": {                    // Optional: Present when AI needs backend data
+    "type": "string",            // "backend_query", "proposed_schedule", "proposed_tasks"
+    "targets": ["string"],       // Optional: What data is needed
+    "filters": {},               // Optional: Filter criteria
+    "payload": {}                // Optional: Additional data
+  },
+  "timestamp": "datetime",       // ISO 8601 format
+  "token_usage": {               // Optional: Token usage information
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "embedding_tokens": 0,
+    "cost_estimate_usd": 0.0
+  }
+}
+
+Process Flow:
+1. User sends chat request
+2. AI retrieves semantic context from vector database
+3. AI determines if backend data is needed (intent)
+4. If intent is present, returns intent response for backend to fulfill
+5. If no intent, generates AI response with structured blocks
+6. Saves message to vector store for future context
+
+2.2 Context Continuation Endpoint
+POST /chat/context
+Description: Continue chat processing with backend-provided context data
+Authentication: Required (Backend service token)
+
+Request Body (ContextInput):
+{
+  "conversation_id": "string",   // Required
+  "user_id": "string",           // Required
+  "context_data": {              // Required: Backend-provided data
+    "assignments": [             // Optional: Array of assignment objects
+      {
+        "title": "string",
+        "description": "string",
+        "due_date": "datetime",
+        "status": "string",
+        "project_id": "string",
+        "task_id": "string"
+      }
+    ],
+    "schedule": {                 // Optional: Schedule data
+      "items": [],               // Array of schedule items
+      "available_slots": []       // Array of available time slots
+    }
+  },
+  "stage": "response"            // Optional: Processing stage
+}
+
+Response: Same as main chat endpoint (AIResponse)
+
+Process Flow:
+1. Backend calls this endpoint after fulfilling an AI intent
+2. AI processes the provided context data
+3. Generates enhanced response with structured blocks
+4. Saves context response to vector store
+
+2.3 Streaming Chat Endpoint
+POST /chat/stream
+Description: Streaming chat endpoint for real-time responses
+Authentication: Not required
+
+Request Body: Same as main chat endpoint (ChatInput)
+
+Response: Server-Sent Events (SSE) stream
+Content-Type: text/plain
+Cache-Control: no-cache
+Connection: keep-alive
+
+Stream Format:
+data: {"stage": "thinking", "conversation_id": "...", "text": "Processing..."}
+
+data: {"stage": "intent", "conversation_id": "...", "intent": {...}}
+
+data: {"stage": "response", "conversation_id": "...", "blocks": [...]}
+
+data: {"stage": "complete", "conversation_id": "...", "text": "...", "blocks": [...]}
+
+2.4 Chat History Endpoint
+GET /chat/history/{conversation_id}
+Description: Get chat history for a conversation
+Authentication: Not required
+
+Query Parameters:
+- user_id: string (required)
+
+Response:
+{
+  "conversation_id": "string",
+  "user_id": "string",
+  "history": [
+    {
+      "content": "string",
+      "metadata": {},
+      "timestamp": "datetime"
+    }
+  ],
+  "count": 0
+}
+
+3. EMBEDDING ENDPOINTS
+----------------------
+
+3.1 Embed Resource
+POST /embed/embed_resource
+Description: Embed a resource (PDF, website, YouTube) into vector database
+Authentication: Required (Backend service token)
+
+Request Body (EmbedResourceInput):
+{
+  "user_id": "string",           // Required
+  "conversation_id": "string",   // Required
+  "resource_id": "string",       // Required: Unique resource identifier
+  "resource_type": "string",    // Required: "PDF", "Website", "YouTube"
+  "title": "string",             // Required: Resource title
+  "content": "string",           // Required: Resource content/text
+  "metadata": {}                 // Optional: Additional metadata
+}
+
+Response:
+{
+  "status": "success",
+  "resource_id": "string",
+  "embedding_id": "string",
+  "embedding_tokens": 0,
+  "message": "Resource successfully embedded"
+}
+
+Process Flow:
+1. Content is split into chunks (1000 characters with 100 overlap)
+2. Each chunk is embedded using OpenAI embeddings
+3. Embeddings are stored in Pinecone vector database
+4. Metadata includes user, conversation, and resource information
+
+3.2 Embed Message
+POST /embed/embed_message
+Description: Embed a chat message into vector database
+Authentication: Required (Backend service token)
+
+Request Body (EmbedMessageInput):
+{
+  "user_id": "string",           // Required
+  "conversation_id": "string",   // Required
+  "message_id": "string",       // Required: Unique message identifier
+  "message_content": "string",  // Required: Message content
+  "metadata": {}                 // Optional: Additional metadata
+}
+
+Response:
+{
+  "status": "success",
+  "message_id": "string",
+  "embedding_id": "string",
+  "embedding_tokens": 0,
+  "message": "Message successfully embedded"
+}
+
+3.3 Async Embed Resource
+POST /embed/embed_resource_async
+Description: Embed resource asynchronously in background
+Authentication: Required (Backend service token)
+
+Request Body: Same as embed_resource
+
+Response:
+{
+  "status": "accepted",
+  "resource_id": "string",
+  "message": "Resource embedding started in background"
+}
+
+3.4 Delete Resource Embeddings
+DELETE /embed/embed_resource/{resource_id}
+Description: Delete embeddings for a specific resource
+Authentication: Required (Backend service token)
+
+Query Parameters:
+- user_id: string (required)
+
+Response:
+{
+  "status": "success",
+  "resource_id": "string",
+  "message": "Resource embeddings deleted"
+}
+
+3.5 Delete User Embeddings
+DELETE /embed/embed_user/{user_id}
+Description: Delete all embeddings for a user (data privacy)
+Authentication: Required (Backend service token)
+
+Response:
+{
+  "status": "success",
+  "user_id": "string",
+  "message": "All user embeddings deleted"
+}
+
+3.6 Embedding Statistics
+GET /embed/embed_stats/{user_id}
+Description: Get embedding statistics for a user
+Authentication: Required (Backend service token)
+
+Response:
+{
+  "user_id": "string",
+  "total_embeddings": 0,
+  "resource_embeddings": 0,
+  "message_embeddings": 0,
+  "storage_size_mb": 0,
+  "last_updated": "datetime"
+}
+
+4. HEALTH & MONITORING ENDPOINTS
+-------------------------------
+
+4.1 Health Check
+GET /health/health
+Description: Basic health check for liveness probes
+Authentication: Not required
+
+Response (HealthResponse):
+{
+  "status": "string",            // "healthy", "degraded", "unhealthy"
+  "timestamp": "datetime",
+  "version": "string"
+}
+
+4.2 Detailed Health Check
+GET /health/detailed
+Description: Detailed health check with service status
+Authentication: Not required
+
+Response:
+{
+  "status": "string",
+  "timestamp": "datetime",
+  "version": "string",
+  "services": {
+    "openai": "string",          // "configured", "not_configured"
+    "pinecone": "string",
+    "supabase": "string"
+  },
+  "configuration": {
+    "debug_mode": true,
+    "log_level": "string",
+    "rate_limiting_enabled": true
+  }
+}
+
+4.3 Metrics
+GET /metrics/metrics
+Description: Basic performance metrics
+Authentication: Not required
+
+Response (MetricsResponse):
+{
+  "requests_total": 0,
+  "errors_total": 0,
+  "avg_latency_ms": 0.0,
+  "stage_distribution": {
+    "thinking": 0,
+    "intent": 0,
+    "response": 0,
+    "complete": 0
+  },
+  "intent_frequency": {
+    "backend_query": 0,
+    "proposed_schedule": 0,
+    "proposed_tasks": 0
+  },
+  "token_usage": {
+    "total_prompt_tokens": 0,
+    "total_completion_tokens": 0,
+    "total_embedding_tokens": 0,
+    "total_cost_usd": 0.0
+  },
+  "timestamp": "datetime"
+}
+
+4.4 Prometheus Metrics
+GET /metrics/prometheus
+Description: Prometheus-formatted metrics
+Authentication: Not required
+
+Response: Plain text in Prometheus exposition format
+
+4.5 Reset Metrics
+POST /metrics/reset
+Description: Reset metrics counters (for testing/debugging)
+Authentication: Not required
+
+Response:
+{
+  "status": "success",
+  "message": "Metrics reset successfully",
+  "timestamp": "datetime"
+}
+
+UI BLOCK TYPES
+==============
+
+The API returns structured UI blocks for rich user interfaces:
+
+1. Resource Item Block
+{
+  "type": "resource_item",
+  "item_type": "string",        // "PDF", "Website", "YouTube"
+  "title": "string",
+  "link": "string",
+  "footer": "string"             // Optional
+}
+
+2. Todo List Block
+{
+  "type": "todo_list",
+  "list_title": "string",
+  "items": [
+    {
+      "title": "string",
+      "description": "string",   // Optional
+      "project_id": "string",    // Optional
+      "task_id": "string",       // Optional
+      "due_datetime": "datetime" // Optional
+    }
+  ],
+  "footer": "string",            // Optional
+  "accept_decline": true         // Optional: Shows accept/decline buttons
+}
+
+3. Explanation Block
+{
+  "type": "explanation_block",
+  "title": "string",
+  "description": "string",       // Optional
+  "blocks": [
+    {
+      "title": "string",
+      "description": "string",   // Optional
+      "list": ["string"]         // Optional: Array of list items
+    }
+  ],
+  "footer": "string"             // Optional
+}
+
+4. Confirmation Block
+{
+  "type": "confirmation",
+  "message": "string"
+}
+
+AI INTENT TYPES
+===============
+
+When the AI needs backend data, it returns an intent:
+
+1. Backend Query Intent
+{
+  "type": "backend_query",
+  "targets": ["assignments", "schedule"],  // What data is needed
+  "filters": {
+    "project_ids": ["string"],
+    "task_ids": ["string"]
+  },
+  "payload": {}
+}
+
+2. Proposed Schedule Intent
+{
+  "type": "proposed_schedule",
+  "targets": [],
+  "filters": {},
+  "payload": {
+    "sessions": [
+      {
+        "title": "string",
+        "start": "datetime",
+        "end": "datetime",
+        "project_id": "string",
+        "task_id": "string"
+      }
+    ]
+  }
+}
+
+3. Proposed Tasks Intent
+{
+  "type": "proposed_tasks",
+  "targets": [],
+  "filters": {},
+  "payload": {
+    "tasks": [
+      {
+        "title": "string",
+        "description": "string",
+        "project_id": "string",
+        "due_datetime": "datetime"
+      }
+    ]
+  }
+}
+
+CONFIGURATION
+=============
+
+Environment Variables Required:
+- OPENAI_API_KEY: OpenAI API key for LLM and embeddings
+- PINECONE_API_KEY: Pinecone API key for vector database
+- PINECONE_ENVIRONMENT: Pinecone environment (optional)
+- PINECONE_INDEX_NAME: Pinecone index name (default: "noki-ai-rd41mlf")
+- SUPABASE_URL: Supabase URL (optional)
+- SUPABASE_KEY: Supabase key (optional)
+- BEARER_TOKEN: Bearer token for API authentication
+- BACKEND_SERVICE_TOKEN: Token for backend service communication
+
+Optional Configuration:
+- OPENAI_MODEL: OpenAI model (default: "gpt-4o")
+- OPENAI_TEMPERATURE: Model temperature (default: 0.7)
+- OPENAI_MAX_TOKENS: Max tokens per response (default: 2000)
+- RETRIEVAL_TOP_K: Number of context documents to retrieve (default: 6)
+- MAX_CHAT_HISTORY: Max chat history for context (default: 5)
+- CHUNK_SIZE: Text chunk size for embeddings (default: 1000)
+- CHUNK_OVERLAP: Text chunk overlap (default: 100)
+- LOG_LEVEL: Logging level (default: "INFO")
+- DEBUG: Debug mode (default: true)
+
+ERROR HANDLING
+==============
+
+Standard HTTP Status Codes:
+- 200: Success
+- 401: Unauthorized (invalid token)
+- 500: Internal server error
+
+Error Response Format:
+{
+  "error": "string",
+  "message": "string"
+}
+
+Common Error Scenarios:
+1. Missing authentication token
+2. Invalid bearer token
+3. OpenAI API errors
+4. Pinecone connection errors
+5. Invalid request format
+6. Rate limiting exceeded
+
+RATE LIMITING
+=============
+
+Default Limits:
+- 100 requests per user per hour
+- 50 requests per conversation per hour
+
+Rate limit headers (if implemented):
+- X-RateLimit-Limit: Maximum requests allowed
+- X-RateLimit-Remaining: Remaining requests
+- X-RateLimit-Reset: Time when limit resets
+
+USAGE EXAMPLES
+==============
+
+1. Basic Chat Request:
+curl -X POST "http://localhost:8000/chat/chat" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "user123",
+    "conversation_id": "conv456",
+    "prompt": "Help me plan my study schedule for next week"
+  }'
+
+2. Chat with Context Data:
+curl -X POST "http://localhost:8000/chat/chat" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "user123",
+    "conversation_id": "conv456",
+    "prompt": "What are my upcoming assignments?",
+    "projects": [
+      {
+        "project_id": "proj1",
+        "title": "Computer Science Project",
+        "description": "Final year project"
+      }
+    ],
+    "tasks": [
+      {
+        "task_id": "task1",
+        "title": "Research Phase",
+        "due_datetime": "2024-01-15T23:59:59Z",
+        "status": "in_progress"
+      }
+    ]
+  }'
+
+3. Embed Resource:
+curl -X POST "http://localhost:8000/embed/embed_resource" \
+  -H "Authorization: Bearer your-backend-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "user123",
+    "conversation_id": "conv456",
+    "resource_id": "pdf123",
+    "resource_type": "PDF",
+    "title": "Machine Learning Textbook Chapter 5",
+    "content": "Chapter 5 covers neural networks and deep learning..."
+  }'
+
+4. Continue with Context:
+curl -X POST "http://localhost:8000/chat/context" \
+  -H "Authorization: Bearer your-backend-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "conversation_id": "conv456",
+    "user_id": "user123",
+    "context_data": {
+      "assignments": [
+        {
+          "title": "Math Homework",
+          "due_date": "2024-01-20T23:59:59Z",
+          "status": "not_started"
+        }
+      ],
+      "schedule": {
+        "available_slots": [
+          {
+            "date": "2024-01-18",
+            "time_slots": [
+              {
+                "start": "09:00",
+                "end": "11:00",
+                "type": "study"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }'
+
+INTEGRATION WORKFLOW
+===================
+
+Typical integration workflow for backend services:
+
+1. User sends message to your backend
+2. Your backend calls POST /chat/chat with user data
+3. If AI returns intent (needs backend data):
+   a. Your backend fetches required data (assignments, schedule, etc.)
+   b. Your backend calls POST /chat/context with the data
+   c. AI processes data and returns structured response
+4. If no intent, AI returns immediate response
+5. Your backend displays AI response with UI blocks
+6. User interacts with blocks (accept/decline, etc.)
+7. Your backend handles user interactions and updates data
+8. Repeat process for continued conversation
+
+PERFORMANCE CONSIDERATIONS
+==========================
+
+1. Embedding Operations:
+   - Use async endpoints for large resources
+   - Implement caching for repeated content
+   - Batch process multiple resources
+
+2. Token Usage:
+   - Monitor token consumption via metrics
+   - Implement cost tracking
+   - Optimize prompt length
+
+3. Vector Search:
+   - Use appropriate filters for better performance
+   - Limit context retrieval to relevant data
+   - Implement semantic search optimization
+
+4. Rate Limiting:
+   - Implement proper rate limiting on your side
+   - Handle rate limit responses gracefully
+   - Use exponential backoff for retries
+
+SECURITY CONSIDERATIONS
+=======================
+
+1. Authentication:
+   - Always use HTTPS in production
+   - Rotate bearer tokens regularly
+   - Implement proper token validation
+
+2. Data Privacy:
+   - Use user-specific embeddings
+   - Implement data deletion endpoints
+   - Follow GDPR/privacy regulations
+
+3. Input Validation:
+   - Validate all input data
+   - Sanitize user prompts
+   - Implement content filtering
+
+4. Error Handling:
+   - Don't expose internal errors to users
+   - Log security-related events
+   - Implement proper error responses
+
+MONITORING & OBSERVABILITY
+=========================
+
+1. Health Checks:
+   - Use /health endpoints for load balancer health checks
+   - Monitor service dependencies
+   - Set up alerts for unhealthy status
+
+2. Metrics:
+   - Track request counts and error rates
+   - Monitor token usage and costs
+   - Set up dashboards for key metrics
+
+3. Logging:
+   - Enable structured logging
+   - Log important events and errors
+   - Implement log aggregation
+
+4. Tracing:
+   - Use LangChain tracing for AI operations
+   - Implement request tracing
+   - Monitor performance bottlenecks
+
+This documentation provides a comprehensive guide for integrating with the Noki AI Engine API. For additional support or questions, refer to the Swagger documentation at /docs or contact the development team.

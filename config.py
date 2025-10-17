@@ -22,15 +22,6 @@ class Settings(BaseSettings):
     openai_temperature: float = 0.7
     openai_max_tokens: int = 2000
     
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # Validate required environment variables
-        if not self.openai_api_key:
-            raise ValueError(
-                "OPENAI_API_KEY is required but not set. "
-                "Please set it in your .env file or as an environment variable."
-            )
-    
     # Pinecone Vector Database Configuration
     pinecone_api_key: Optional[str] = None
     pinecone_environment: Optional[str] = None

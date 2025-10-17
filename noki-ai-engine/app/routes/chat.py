@@ -5,7 +5,7 @@ import logging
 from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
 
-from app.models.schemas import ChatInput, AIResponse, ContextInput
+from app.models.schemas import ChatInput, AIResponse, ProjectManagementInput
 from app.services.llm import LLMService
 from app.services.vector import VectorService
 from app.services.planner import PlannerService
@@ -53,21 +53,6 @@ async def chat(
         # Process the chat request
         response = llm_service.process_chat_request(chat_input)
         
-        # If we have an intent, enhance the response with planner service
-        if response.intent and response.stage == "intent":
-            # The response is already properly formatted for intent stage
-            pass
-        elif response.blocks:
-            # Enhance blocks using planner service if needed
-            enhanced_blocks = []
-            for block in response.blocks:
-                if block.get("type") == "todo_list" and block.get("accept_decline"):
-                    # This is a proposal that needs special handling
-                    enhanced_blocks.append(block)
-                else:
-                    enhanced_blocks.append(block)
-            response.blocks = enhanced_blocks
-        
         logger.info(f"Chat response generated with stage: {response.stage}")
         return response
         
@@ -76,59 +61,6 @@ async def chat(
         raise HTTPException(
             status_code=500,
             detail="Internal server error processing chat request"
-        )
-
-
-@router.post("/chat/context", response_model=AIResponse)
-async def chat_with_context(
-    context_input: ContextInput,
-    llm_service: LLMService = Depends(get_llm_service),
-    planner_service: PlannerService = Depends(get_planner_service),
-    token: str = Depends(verify_backend_token)
-) -> AIResponse:
-    """
-    Continue chat processing with backend-provided context data
-    
-    This endpoint is called by the backend after fulfilling an AI intent.
-    The AI can then process the context data and generate a complete response.
-    """
-    try:
-        logger.info(f"Processing context for conversation {context_input.conversation_id}")
-        
-        # Continue processing with the provided context
-        response = llm_service.continue_with_context(
-            conversation_id=context_input.conversation_id,
-            user_id=context_input.user_id,
-            context_data=context_input.context_data
-        )
-        
-        # Enhance response with planner service based on context data
-        if context_input.context_data:
-            # Create a mock intent for the planner service
-            from app.models.schemas import AIIntent, IntentType
-            mock_intent = AIIntent(
-                type=IntentType.BACKEND_QUERY,
-                targets=["assignments", "schedule"],
-                filters={},
-                payload={}
-            )
-            
-            enhanced_blocks = planner_service.create_intent_response(
-                intent=mock_intent,
-                context_data=context_input.context_data
-            )
-            
-            if enhanced_blocks:
-                response.blocks = enhanced_blocks
-        
-        logger.info(f"Context response generated with stage: {response.stage}")
-        return response
-        
-    except Exception as e:
-        logger.error(f"Error processing context request: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error processing context request"
         )
 
 
@@ -154,11 +86,6 @@ async def chat_stream(
             
             # Process the request
             response = llm_service.process_chat_request(chat_input)
-            
-            # Emit intent if present
-            if response.intent:
-                yield f"data: {json.dumps(response.dict())}\n\n"
-                return
             
             # Emit response chunks
             if response.blocks:
@@ -191,6 +118,37 @@ async def chat_stream(
         raise HTTPException(
             status_code=500,
             detail="Internal server error in streaming chat"
+        )
+
+
+@router.post("/projects/manage")
+async def manage_projects(
+    project_input: ProjectManagementInput,
+    token: str = Depends(verify_bearer_token)
+) -> Dict[str, Any]:
+    """
+    Project management endpoint for creating, updating, and managing projects, tasks, and todos
+    
+    This endpoint handles CRUD operations for project management entities.
+    """
+    try:
+        logger.info(f"Processing project management request for user {project_input.user_id}")
+        
+        # For now, return a simple response
+        # In a real implementation, you'd integrate with a database
+        return {
+            "status": "success",
+            "action": project_input.action,
+            "user_id": project_input.user_id,
+            "message": f"Project management action '{project_input.action}' processed successfully",
+            "data": project_input.data
+        }
+        
+    except Exception as e:
+        logger.error(f"Error processing project management request: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error processing project management request"
         )
 
 

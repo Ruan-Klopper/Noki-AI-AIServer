@@ -10,16 +10,8 @@ from enum import Enum
 class Stage(str, Enum):
     """AI processing stages"""
     THINKING = "thinking"
-    INTENT = "intent"
     RESPONSE = "response"
     COMPLETE = "complete"
-
-
-class IntentType(str, Enum):
-    """Types of AI intents"""
-    BACKEND_QUERY = "backend_query"
-    PROPOSED_SCHEDULE = "proposed_schedule"
-    PROPOSED_TASKS = "proposed_tasks"
 
 
 class TaskStatus(str, Enum):
@@ -48,6 +40,19 @@ class Task(BaseModel):
     project_id: Optional[str] = None
 
 
+class Todo(BaseModel):
+    """Todo model"""
+    todo_id: str
+    title: str
+    description: Optional[str] = None
+    due_date: Optional[datetime] = None
+    status: Optional[TaskStatus] = None
+    project_id: Optional[str] = None
+    task_id: Optional[str] = None
+    priority: Optional[str] = None  # "high", "medium", "low"
+    estimated_duration: Optional[str] = None
+
+
 class ChatInput(BaseModel):
     """Input model for chat requests"""
     user_id: str
@@ -55,16 +60,9 @@ class ChatInput(BaseModel):
     prompt: str
     projects: Optional[List[Project]] = None
     tasks: Optional[List[Task]] = None
+    todos: Optional[List[Todo]] = None
     stage: Stage = Stage.THINKING
     metadata: Optional[Dict[str, Any]] = None
-
-
-class AIIntent(BaseModel):
-    """AI intent model"""
-    type: IntentType
-    targets: Optional[List[str]] = None
-    filters: Optional[Dict[str, Any]] = None
-    payload: Optional[Dict[str, Any]] = None
 
 
 class TokenUsage(BaseModel):
@@ -82,17 +80,18 @@ class AIResponse(BaseModel):
     conversation_id: str
     text: Optional[str] = None
     blocks: Optional[List[Dict[str, Any]]] = None
-    intent: Optional[AIIntent] = None
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     token_usage: Optional[TokenUsage] = None
 
 
-class ContextInput(BaseModel):
-    """Input model for context requests"""
-    conversation_id: str
+class ProjectManagementInput(BaseModel):
+    """Input model for project management operations"""
     user_id: str
-    context_data: Dict[str, Any]
-    stage: Stage = Stage.RESPONSE
+    project_id: Optional[str] = None
+    task_id: Optional[str] = None
+    todo_id: Optional[str] = None
+    action: str  # "create", "update", "delete", "list"
+    data: Optional[Dict[str, Any]] = None
 
 
 class EmbedResourceInput(BaseModel):
@@ -128,6 +127,5 @@ class MetricsResponse(BaseModel):
     errors_total: int
     avg_latency_ms: float
     stage_distribution: Dict[str, int]
-    intent_frequency: Dict[str, int]
     token_usage: Dict[str, Any]
     timestamp: datetime = Field(default_factory=datetime.utcnow)
