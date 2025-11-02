@@ -2,18 +2,19 @@
 Chat routes for the main AI interaction endpoints
 """
 import logging
-import json
 from typing import Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-from app.models.schemas import ChatInput, AIResponse, ProjectManagementInput
+from app.models.schemas import ChatInput, AIResponse, ContextInput
 from app.services.llm import LLMService
 from app.services.vector import VectorService
 from app.services.planner import PlannerService
-from app.auth import verify_bearer_token, verify_backend_token
+from config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+security = HTTPBearer()
 
 
 def get_vector_service() -> VectorService:
@@ -31,13 +32,30 @@ def get_planner_service() -> PlannerService:
     return PlannerService()
 
 
+def verify_backend_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
+    """Verify backend service token or bearer token"""
+    # Check if we have either token configured
+    if not settings.backend_service_token and not settings.bearer_token:
+        return "no-auth"  # Development mode
+    
+    # Check backend_service_token first (legacy)
+    if settings.backend_service_token and credentials.credentials == settings.backend_service_token:
+        return credentials.credentials
+    
+    # Check bearer_token as fallback
+    if settings.bearer_token and credentials.credentials == settings.bearer_token:
+        return credentials.credentials
+    
+    raise HTTPException(status_code=401, detail="Invalid service token")
+    
+    return credentials.credentials
+
+
 @router.post("/chat", response_model=AIResponse)
 async def chat(
-    request: Request,
     chat_input: ChatInput,
     llm_service: LLMService = Depends(get_llm_service),
-    planner_service: PlannerService = Depends(get_planner_service),
-    token: str = Depends(verify_bearer_token)
+    planner_service: PlannerService = Depends(get_planner_service)
 ) -> AIResponse:
     """
     Main chat endpoint - processes user messages and returns structured AI responses
@@ -50,16 +68,25 @@ async def chat(
     5. Saves message to vector store
     """
     try:
-        # Log raw request body for debugging
-        body = await request.body()
-        logger.info(f"=== CHAT REQUEST RECEIVED ===")
-        logger.info(f"Raw request body: {body.decode()}")
-        
         logger.info(f"Processing chat request for user {chat_input.user_id}, conversation {chat_input.conversation_id}")
-        logger.info(f"Full chat parameters received: {chat_input.dict()}")
         
         # Process the chat request
         response = llm_service.process_chat_request(chat_input)
+        
+        # If we have an intent, enhance the response with planner service
+        if response.intent and response.stage == "intent":
+            # The response is already properly formatted for intent stage
+            pass
+        elif response.blocks:
+            # Enhance blocks using planner service if needed
+            enhanced_blocks = []
+            for block in response.blocks:
+                if block.get("type") == "todo_list" and block.get("accept_decline"):
+                    # This is a proposal that needs special handling
+                    enhanced_blocks.append(block)
+                else:
+                    enhanced_blocks.append(block)
+            response.blocks = enhanced_blocks
         
         logger.info(f"Chat response generated with stage: {response.stage}")
         return response
@@ -72,11 +99,62 @@ async def chat(
         )
 
 
+@router.post("/chat/context", response_model=AIResponse)
+async def chat_with_context(
+    context_input: ContextInput,
+    llm_service: LLMService = Depends(get_llm_service),
+    planner_service: PlannerService = Depends(get_planner_service)
+) -> AIResponse:
+    """
+    Continue chat processing with backend-provided context data
+    
+    This endpoint is called by the backend after fulfilling an AI intent.
+    The AI can then process the context data and generate a complete response.
+    """
+    try:
+        logger.info(f"Processing context for conversation {context_input.conversation_id}")
+        
+        # Continue processing with the provided context
+        response = llm_service.continue_with_context(
+            conversation_id=context_input.conversation_id,
+            user_id=context_input.user_id,
+            context_data=context_input.context_data
+        )
+        
+        # Enhance response with planner service based on context data
+        if context_input.context_data:
+            # Create a mock intent for the planner service
+            from app.models.schemas import AIIntent, IntentType
+            mock_intent = AIIntent(
+                type=IntentType.BACKEND_QUERY,
+                targets=["assignments", "schedule"],
+                filters={},
+                payload={}
+            )
+            
+            enhanced_blocks = planner_service.create_intent_response(
+                intent=mock_intent,
+                context_data=context_input.context_data
+            )
+            
+            if enhanced_blocks:
+                response.blocks = enhanced_blocks
+        
+        logger.info(f"Context response generated with stage: {response.stage}")
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error processing context request: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error processing context request"
+        )
+
+
 @router.post("/chat/stream")
 async def chat_stream(
     chat_input: ChatInput,
-    llm_service: LLMService = Depends(get_llm_service),
-    token: str = Depends(verify_bearer_token)
+    llm_service: LLMService = Depends(get_llm_service)
 ):
     """
     Streaming chat endpoint for real-time responses
@@ -94,6 +172,11 @@ async def chat_stream(
             
             # Process the request
             response = llm_service.process_chat_request(chat_input)
+            
+            # Emit intent if present
+            if response.intent:
+                yield f"data: {json.dumps(response.dict())}\n\n"
+                return
             
             # Emit response chunks
             if response.blocks:
@@ -129,43 +212,11 @@ async def chat_stream(
         )
 
 
-@router.post("/projects/manage")
-async def manage_projects(
-    project_input: ProjectManagementInput,
-    token: str = Depends(verify_bearer_token)
-) -> Dict[str, Any]:
-    """
-    Project management endpoint for creating, updating, and managing projects, tasks, and todos
-    
-    This endpoint handles CRUD operations for project management entities.
-    """
-    try:
-        logger.info(f"Processing project management request for user {project_input.user_id}")
-        
-        # For now, return a simple response
-        # In a real implementation, you'd integrate with a database
-        return {
-            "status": "success",
-            "action": project_input.action,
-            "user_id": project_input.user_id,
-            "message": f"Project management action '{project_input.action}' processed successfully",
-            "data": project_input.data
-        }
-        
-    except Exception as e:
-        logger.error(f"Error processing project management request: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error processing project management request"
-        )
-
-
 @router.get("/chat/history/{conversation_id}")
 async def get_chat_history(
     conversation_id: str,
     user_id: str,
-    vector_service: VectorService = Depends(get_vector_service),
-    token: str = Depends(verify_bearer_token)
+    vector_service: VectorService = Depends(get_vector_service)
 ) -> Dict[str, Any]:
     """
     Get chat history for a conversation

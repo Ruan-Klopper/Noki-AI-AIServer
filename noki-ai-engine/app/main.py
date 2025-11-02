@@ -1,7 +1,8 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 import logging
 import os
 
@@ -60,6 +61,25 @@ app.add_middleware(
 # Include routers
 app.include_router(chat.router, prefix="/chat", tags=["Chat"])
 app.include_router(embed.router, prefix="/embed", tags=["Embeddings"])
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Log validation errors with full request details"""
+    try:
+        body = await request.body()
+        logger.error(f"=== VALIDATION ERROR ===")
+        logger.error(f"Request URL: {request.url}")
+        logger.error(f"Request method: {request.method}")
+        logger.error(f"Raw request body: {body.decode()}")
+        logger.error(f"Validation errors: {exc.errors()}")
+    except Exception as e:
+        logger.error(f"Error logging validation failure: {e}")
+    
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()}
+    )
 
 @app.get("/")
 def root(token: str = Depends(verify_bearer_token)):

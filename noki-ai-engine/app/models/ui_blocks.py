@@ -68,6 +68,21 @@ class ProposedTaskList(BaseModel):
     grouped_by_date: Optional[bool] = None  # Enable date grouping
 
 
+class ProposedListItem(BaseModel):
+    """Item within a proposed list"""
+    title: str
+    due_date: str  # ISO 8601 format datetime string
+    is_all_day: bool
+
+
+class ProposedList(BaseModel):
+    """Proposed list block for todo planning"""
+    type: str = "proposed_list"
+    title: str  # Title of this todo group
+    proposed_list_for_task_id: str  # ID of the task or todo this list is for
+    items: List[ProposedListItem]  # List of todo items
+
+
 class Confirmation(BaseModel):
     """Confirmation block"""
     type: str = "confirmation"
@@ -75,7 +90,7 @@ class Confirmation(BaseModel):
 
 
 # Union type for all possible blocks
-UIBlock = Union[ResourceItem, TodoList, ExplanationBlock, ProposedTaskList, Confirmation]
+UIBlock = Union[ResourceItem, TodoList, ExplanationBlock, ProposedTaskList, ProposedList, Confirmation]
 
 
 class BlockFactory:
@@ -127,6 +142,17 @@ class BlockFactory:
             "items": items,
             "footer": footer,
             "grouped_by_date": grouped_by_date
+        }
+    
+    @staticmethod
+    def create_proposed_list(title: str, proposed_list_for_task_id: str, 
+                            items: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Create a proposed list block"""
+        return {
+            "type": "proposed_list",
+            "title": title,
+            "proposed_list_for_task_id": proposed_list_for_task_id,
+            "items": items
         }
     
     @staticmethod
