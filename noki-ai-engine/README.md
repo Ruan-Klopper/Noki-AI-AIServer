@@ -1,8 +1,78 @@
 # Noki AI Engine
 
-An intelligent academic assistant built with FastAPI, LangChain, and Pinecone for semantic search and AI-powered tutoring.
+<div align="center">
 
-## 🏗️ Architecture
+**An intelligent academic assistant built with FastAPI, LangChain, and Pinecone for semantic search and AI-powered tutoring.**
+</br>
+</br>
+**_By Ruan Klopper_**
+</br>
+**_Student no: 231280_**
+</br>
+</br>
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-app.noki.co.za-blue)](https://app.noki.co.za)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-black?logo=github)](https://github.com/Ruan-Klopper/Noki-AI-frontend)
+[![License](https://img.shields.io/badge/License-Private-red)](LICENSE)
+
+</div>
+
+## Tech Stack
+
+**Core Framework**
+<br>
+![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.117-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![Uvicorn](https://img.shields.io/badge/Uvicorn-0.37-499848?style=for-the-badge&logo=uvicorn&logoColor=white)
+
+**AI & LLM**
+<br>
+![LangChain](https://img.shields.io/badge/LangChain-0.3-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)
+![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-412991?style=for-the-badge&logo=openai&logoColor=white)
+![TikToken](https://img.shields.io/badge/TikToken-0.8-FF6B6B?style=for-the-badge)
+
+**Vector Database**
+<br>
+![Pinecone](https://img.shields.io/badge/Pinecone-Vector_DB-430098?style=for-the-badge&logo=pinecone&logoColor=white)
+![LangChain Pinecone](https://img.shields.io/badge/LangChain_Pinecone-0.2-1C3C3C?style=for-the-badge)
+
+**Data Validation & Serialization**
+<br>
+![Pydantic](https://img.shields.io/badge/Pydantic-2.11-E92063?style=for-the-badge&logo=pydantic&logoColor=white)
+![Pydantic Settings](https://img.shields.io/badge/Pydantic_Settings-2.11-E92063?style=for-the-badge)
+
+**HTTP & Networking**
+<br>
+![HTTPX](https://img.shields.io/badge/HTTPX-0.28-98330A?style=for-the-badge)
+![Requests](https://img.shields.io/badge/Requests-2.32-000000?style=for-the-badge&logo=python&logoColor=white)
+
+**Security & Authentication**
+<br>
+![Python-JOSE](https://img.shields.io/badge/Python--JOSE-3.3-FF6B6B?style=for-the-badge)
+![Passlib](https://img.shields.io/badge/Passlib-1.7-FFD700?style=for-the-badge)
+
+**Database & ORM**
+<br>
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white)
+![Alembic](https://img.shields.io/badge/Alembic-1.14-00A9CE?style=for-the-badge)
+
+**Monitoring & Logging**
+<br>
+![Prometheus](https://img.shields.io/badge/Prometheus-Client-0.21-E6522C?style=for-the-badge&logo=prometheus&logoColor=white)
+![Structlog](https://img.shields.io/badge/Structlog-24.4-000000?style=for-the-badge)
+
+**Development Tools**
+<br>
+![Pytest](https://img.shields.io/badge/Pytest-8.3-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)
+![Black](https://img.shields.io/badge/Black-24.10-000000?style=for-the-badge&logo=black&logoColor=white)
+![isort](https://img.shields.io/badge/isort-5.13-EF8336?style=for-the-badge)
+![Flake8](https://img.shields.io/badge/Flake8-7.1-000000?style=for-the-badge&logo=flake8&logoColor=white)
+
+**Deployment**
+<br>
+![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Railway](https://img.shields.io/badge/Railway-Deployed-0B0D0E?style=for-the-badge&logo=railway&logoColor=white)
+
+## Architecture
 
 This AI server implements the complete Noki AI Engine specification with:
 
