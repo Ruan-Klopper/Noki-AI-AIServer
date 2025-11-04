@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 from langchain_community.chat_models import ChatOpenAI
-from langchain.schema import Document, HumanMessage, SystemMessage
+from langchain.schema import Document, HumanMessage, SystemMessage, AIMessage
 from langchain.memory import ConversationBufferWindowMemory
 
 from config import settings
@@ -235,14 +235,17 @@ CRITICAL RULES:
         This is the main entry point for chat processing
         """
         try:
-            # Step 1: Retrieve semantic context
+            # Step 1: Save user message to vector store first (for context retrieval)
+            self._save_user_message(chat_input)
+            
+            # Step 2: Retrieve semantic context (includes the message we just saved)
             semantic_context = self._retrieve_context(chat_input)
             
-            # Step 2: Generate response directly
+            # Step 3: Generate response directly
             response = self._generate_response(chat_input, semantic_context)
             
-            # Step 3: Save message to vector store
-            self._save_message(chat_input)
+            # Step 4: Save AI response to vector store for conversation history
+            self._save_ai_response(chat_input, response)
             
             return response
             
@@ -327,14 +330,38 @@ CRITICAL RULES:
                     timestamp=datetime.utcnow()
                 )
             
-            # Generate response with JSON format instruction
-            system_message_content = prompt + "\n\nIMPORTANT: You MUST respond with ONLY valid JSON. Do not include any markdown formatting, code blocks, or explanatory text. Just return the raw JSON object."
-            user_message_content = chat_input.prompt + "\n\nRemember: Respond with ONLY the JSON object, no other text."
+            # Build messages array with conversation history
+            messages = []
             
-            messages = [
-                SystemMessage(content=system_message_content),
-                HumanMessage(content=user_message_content)
+            # Add system message
+            system_message_content = prompt + "\n\nIMPORTANT: You MUST respond with ONLY valid JSON. Do not include any markdown formatting, code blocks, or explanatory text. Just return the raw JSON object."
+            messages.append(SystemMessage(content=system_message_content))
+            
+            # Add conversation history as message objects (excluding the current message we just saved)
+            history_docs = [
+                doc for doc in context 
+                if doc.metadata.get("type") in ["chat", "chat_message", "ai_response"]
             ]
+            history_docs.sort(key=lambda x: x.metadata.get("created_at", ""))
+            
+            # Filter out the current user message if it's in the history (it was just saved)
+            # Compare by checking if the content matches the current prompt
+            history_docs = [
+                doc for doc in history_docs 
+                if doc.page_content.strip() != chat_input.prompt.strip()
+            ]
+            
+            # Add last 5 message pairs (10 messages total) as actual message objects
+            for doc in history_docs[-10:]:
+                message_type = doc.metadata.get("message_type", "user")
+                if message_type == "ai":
+                    messages.append(AIMessage(content=doc.page_content))
+                else:
+                    messages.append(HumanMessage(content=doc.page_content))
+            
+            # Add current user message
+            user_message_content = chat_input.prompt + "\n\nRemember: Respond with ONLY the JSON object, no other text."
+            messages.append(HumanMessage(content=user_message_content))
             
             response = self.llm(messages)
             response_text = response.content.strip()
@@ -420,14 +447,25 @@ CRITICAL RULES:
     
     def _format_conversation_history(self, context: List[Document]) -> str:
         """Format conversation history for prompt"""
-        history_docs = [doc for doc in context if doc.metadata.get("type") == "chat_message"]
+        # Filter for chat messages (both user and AI)
+        history_docs = [
+            doc for doc in context 
+            if doc.metadata.get("type") in ["chat", "chat_message", "ai_response"]
+        ]
         
         if not history_docs:
             return "No previous conversation history."
         
+        # Sort by creation time (oldest first for chronological order)
+        history_docs.sort(key=lambda x: x.metadata.get("created_at", ""))
+        
         formatted_history = []
-        for doc in history_docs[-5:]:  # Last 5 messages
-            formatted_history.append(f"- {doc.page_content}")
+        for doc in history_docs[-10:]:  # Last 10 messages (5 pairs)
+            message_type = doc.metadata.get("message_type", "user")
+            if message_type == "ai":
+                formatted_history.append(f"AI: {doc.page_content}")
+            else:
+                formatted_history.append(f"User: {doc.page_content}")
         
         return "\n".join(formatted_history)
     
@@ -477,17 +515,18 @@ CRITICAL RULES:
                 "timestamp": datetime.utcnow().isoformat() + "Z"
             }
     
-    def _save_message(self, chat_input: ChatInput):
+    def _save_user_message(self, chat_input: ChatInput):
         """Save user message to vector store"""
         try:
-            message_id = f"msg_{datetime.utcnow().timestamp()}"
+            message_id = f"user_msg_{datetime.utcnow().timestamp()}"
             self.vector_service.embed_message(
                 user_id=chat_input.user_id,
                 conversation_id=chat_input.conversation_id,
                 message_id=message_id,
                 message_content=chat_input.prompt,
                 metadata={
-                    "type": "chat_message",
+                    "type": "chat",
+                    "message_type": "user",
                     "stage": chat_input.stage.value,
                     "projects": [p.project_id for p in (chat_input.projects or [])],
                     "tasks": [t.task_id for t in (chat_input.tasks or [])],
@@ -496,4 +535,39 @@ CRITICAL RULES:
                 }
             )
         except Exception as e:
-            logger.error(f"Failed to save message: {e}")
+            logger.error(f"Failed to save user message: {e}")
+    
+    def _save_ai_response(self, chat_input: ChatInput, response: AIResponse):
+        """Save AI response to vector store for conversation history"""
+        try:
+            # Create a summary of the AI response for embedding
+            response_content = response.text or ""
+            if response.blocks:
+                # Include block information in the response content
+                for block in response.blocks:
+                    if block.get("type") == "explanation_block":
+                        response_content += f" {block.get('explanation_content', '')[:200]}"
+                    elif block.get("type") == "proposed_list":
+                        response_content += f" Proposed list: {block.get('title', '')}"
+            
+            # If response is empty, create a default summary
+            if not response_content.strip():
+                response_content = "AI provided a response with structured blocks."
+            
+            message_id = f"ai_msg_{datetime.utcnow().timestamp()}"
+            self.vector_service.embed_message(
+                user_id=chat_input.user_id,
+                conversation_id=chat_input.conversation_id,
+                message_id=message_id,
+                message_content=response_content,
+                metadata={
+                    "type": "chat",
+                    "message_type": "ai",
+                    "stage": response.stage.value,
+                    "created_at": datetime.utcnow().isoformat(),
+                    "response_text": response.text,
+                    "has_blocks": bool(response.blocks)
+                }
+            )
+        except Exception as e:
+            logger.error(f"Failed to save AI response: {e}")

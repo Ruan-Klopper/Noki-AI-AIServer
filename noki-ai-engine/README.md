@@ -295,4 +295,5 @@ noki-ai-engine/
 
 ## 📝 License
 
-This project is part of the Noki AI platform. See the main repository for licensing information.
+Private - Ruan Klopper
+This project is private and proprietary. All rights reserved.

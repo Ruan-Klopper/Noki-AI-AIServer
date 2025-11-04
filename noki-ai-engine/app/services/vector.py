@@ -421,32 +421,62 @@ class VectorService:
         """
         Get recent chat history for context
         
-        Returns list of recent chat messages
+        Returns list of recent chat messages ordered by creation time
         """
         try:
             limit = limit or settings.max_chat_history
             
-            # Search for recent chat messages
+            # Build filter for user, conversation, and chat type
             filter_dict = {
                 "user_id": user_id,
                 "conversation_id": conversation_id,
                 "type": "chat"
             }
             
-            # Get recent messages (this is a simplified approach)
-            # In production, you might want to use a different strategy
-            results = self.vectorstore.similarity_search(
-                "",  # Empty query to get all
-                k=limit * 2,  # Get more to filter by recency
-                filter=filter_dict
+            # Use conversation_id as query to get conversation-related documents
+            # This works better than empty query for similarity search
+            query_text = f"conversation {conversation_id}"
+            
+            try:
+                # Get more results than needed to ensure we have enough after filtering by time
+                results = self.vectorstore.similarity_search(
+                    query=query_text,
+                    k=limit * 5,  # Get more to filter by recency
+                    filter=filter_dict
+                )
+                
+            except Exception as e:
+                logger.warning(f"Similarity search with query failed: {e}, trying without filter")
+                # Fallback: try without strict filter
+                try:
+                    results = self.vectorstore.similarity_search(
+                        query=query_text,
+                        k=limit * 5
+                    )
+                    # Filter manually
+                    results = [
+                        doc for doc in results 
+                        if (doc.metadata.get("user_id") == user_id and 
+                            doc.metadata.get("conversation_id") == conversation_id and
+                            doc.metadata.get("type") == "chat")
+                    ]
+                except Exception as e2:
+                    logger.error(f"Fallback search also failed: {e2}")
+                    return []
+            
+            # Sort by creation time (most recent first)
+            # Filter to ensure all have created_at metadata
+            valid_docs = [doc for doc in results if doc.metadata.get("created_at")]
+            valid_docs.sort(
+                key=lambda x: x.metadata.get("created_at", ""), 
+                reverse=True
             )
             
-            # Sort by creation time and limit
-            results.sort(key=lambda x: x.metadata.get("created_at", ""), reverse=True)
-            return results[:limit]
+            # Return the most recent messages
+            return valid_docs[:limit]
             
         except Exception as e:
-            logger.error(f"Failed to get recent chat history: {e}")
+            logger.error(f"Failed to get recent chat history: {e}", exc_info=True)
             return []
     
     def delete_user_embeddings(self, user_id: str) -> bool:
